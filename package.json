@@ -1,0 +1,41 @@
+{
+  "name": "pilkatejs",
+  "version": "0.1.0",
+  "description": "Kate KZG commitment scheme from PIL",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/xavi-pinsach/pilkatejs.git"
+  },
+  "keywords": [
+    "PIL",
+    "Kate",
+    "KZG",
+    "zkSnark",
+    "Ethereum",
+    "cryptography",
+    "zero",
+    "knowledge"
+  ],
+  "author": "Xavier Pinsach",
+  "license": "GPL-3.0",
+  "bugs": {
+    "url": "https://github.com/xavi-pinsach/pilkatejs/issues"
+  },
+  "homepage": "https://github.com/xavi-pinsach/pilkatejs#readme",
+  "dependencies": {
+    "ffjavascript": "^0.2.56",
+    "pilcom": "^0.0.18",
+    "yargs": "^17.6.0"
+  },
+  "devDependencies": {
+    "eslint": "^8.25.0",
+    "eslint-config-standard": "^17.0.0",
+    "eslint-plugin-import": "^2.26.0",
+    "eslint-plugin-n": "^15.3.0",
+    "eslint-plugin-promise": "^6.1.0"
+  }
+}

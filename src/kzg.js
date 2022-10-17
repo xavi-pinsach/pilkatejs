@@ -17,6 +17,6 @@
     along with pilkatejs. If not, see <https://www.gnu.org/licenses/>.
 */
 
-export { default as pilBuildConstant } from "./pil_build_constant.js";
-export { default as pilBuildCommitted } from "./pil_build_committed.js";
-export { default as pilVerify } from "./pil_verify.js";
+export {default as kzgSetup} from "./kzg_setup.js";
+export {default as kzgProve} from "./kzg_prove.js";
+export {default as kzgVerify} from "./kzg_verify.js";

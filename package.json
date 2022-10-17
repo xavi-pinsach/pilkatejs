@@ -2,6 +2,7 @@
   "name": "pilkatejs",
   "version": "0.1.0",
   "description": "Kate KZG commitment scheme from PIL",
+  "type": "module",
   "main": "index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
@@ -27,11 +28,15 @@
   },
   "homepage": "https://github.com/xavi-pinsach/pilkatejs#readme",
   "dependencies": {
+    "bfj": "^7.0.2",
+    "chalk": "^5.1.2",
     "ffjavascript": "^0.2.56",
+    "logplease": "^1.2.15",
     "pilcom": "^0.0.18",
     "yargs": "^17.6.0"
   },
   "devDependencies": {
+    "chai": "^4.3.6",
     "eslint": "^8.25.0",
     "eslint-config-standard": "^17.0.0",
     "eslint-plugin-import": "^2.26.0",

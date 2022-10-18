@@ -28,9 +28,12 @@
   },
   "homepage": "https://github.com/xavi-pinsach/pilkatejs#readme",
   "dependencies": {
+    "@iden3/binfileutils": "^0.0.11",
     "bfj": "^7.0.2",
+    "blake2b-wasm": "^2.4.0",
     "chalk": "^5.1.2",
     "ffjavascript": "^0.2.56",
+    "js-sha3": "^0.8.0",
     "logplease": "^1.2.15",
     "pilcom": "^0.0.18",
     "yargs": "^17.6.0"

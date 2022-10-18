@@ -21,7 +21,6 @@ import {newConstantPolsArray, compile} from "pilcom";
 import fs from "fs";
 import {F1Field} from "ffjavascript";
 
-
 export default async function pilBuildConstant(pilFile, pilConfigFile, smBuilderFile, outputFile, logger) {
     logger.info(`Build constant polynomials file from ${pilFile} file`);
 

@@ -1,0 +1,4 @@
+namespace Simple(%N);
+    pol constant CNST;
+    pol commit   cmmt;
+

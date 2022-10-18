@@ -1,12 +1,8 @@
-import path from "path";
 import Logger from "logplease";
 import * as pil from "../pil.js";
-import url from "url";
 
 const logger = Logger.create("pilkatejs", {showTimestamp: false});
 Logger.setLogLevel("INFO");
-
-const __dirname =   path.dirname(url.fileURLToPath(import.meta.url));
 
 export async function pilBuildConstant(pilFile, pilConfigFile, smBuilderFile, outputFile, options) {
     if (options.verbose) Logger.setLogLevel("DEBUG");

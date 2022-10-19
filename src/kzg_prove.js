@@ -195,5 +195,9 @@ export default async function kateProve(pilFile, pilConfigFile, cnstPolsFile, cm
         delete proof.polynomials[cnstPols.$$defArray[i].name];
     }
 
+    // Finish curve & close file descriptors
+    await curve.terminate();
+    fdPTau.close();
+
     return {publicInputs: stringifyBigInts(publicSignals), proof: stringifyBigInts(proof.toObjectProof())};
 }

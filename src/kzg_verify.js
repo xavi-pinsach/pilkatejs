@@ -81,6 +81,9 @@ export default async function kateVerify(_preprocessed, _publicInputs, _proof, l
         }
     }
 
+    // Finish curve & close file descriptors
+    await curve.terminate();
+
     return res;
 }
 

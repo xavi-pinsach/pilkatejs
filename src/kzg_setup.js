@@ -103,6 +103,8 @@ export default async function kateSetup(pilFile, pilConfigFile, cnstPolsFile, pt
         preprocessed.polynomials[cnstPol.name] = G1.toObject(polCommitment);
     }
 
+    // Finish curve & close file descriptors
+    await curve.terminate();
     fdPTau.close();
 
     logger.info("Kate setup finished");

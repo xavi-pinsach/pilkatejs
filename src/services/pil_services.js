@@ -7,17 +7,17 @@ Logger.setLogLevel("INFO");
 export async function pilBuildConstant(pilFile, pilConfigFile, smBuilderFile, outputFile, options) {
     if (options.verbose) Logger.setLogLevel("DEBUG");
 
-    return pil.pilBuildConstant(pilFile, pilConfigFile, smBuilderFile, outputFile, logger);
+    return await pil.pilBuildConstant(pilFile, pilConfigFile, smBuilderFile, outputFile, logger);
 }
 
 export async function pilBuildCommitted(pilFile, pilConfigFile, smBuilderFile, smInputFile, outputFile, options) {
     if (options.verbose) Logger.setLogLevel("DEBUG");
 
-    return pil.pilBuildCommitted(pilFile, pilConfigFile, smBuilderFile, smInputFile, outputFile, logger);
+    return await pil.pilBuildCommitted(pilFile, pilConfigFile, smBuilderFile, smInputFile, outputFile, logger);
 }
 
 export async function pilVerify(pilFile, pilConfigFile, cnstPolsFile, cmmtPolsFile, options) {
     if (options.verbose) Logger.setLogLevel("DEBUG");
 
-    return pil.pilVerify(pilFile, pilConfigFile, cnstPolsFile, cmmtPolsFile, logger);
+    return await pil.pilVerify(pilFile, pilConfigFile, cnstPolsFile, cmmtPolsFile, logger);
 }

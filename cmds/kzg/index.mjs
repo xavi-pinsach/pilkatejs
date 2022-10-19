@@ -1,5 +1,5 @@
 import * as kzgSetup from "./kzg_setup_cmd.mjs"
-import * as kzgProof from "./kzg_proof_cmd.mjs"
+import * as kzgProof from "./kzg_prove_cmd.mjs"
 import * as kzgVerify from "./kzg_verify_cmd.mjs"
 
 export const command = 'kzg <subcommand>'

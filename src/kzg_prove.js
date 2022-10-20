@@ -171,12 +171,14 @@ export default async function kateProve(pilFile, pilConfigFile, cnstPolsFile, cm
 
     let alphaCoef = Fr.one;
     for (const [polName] of Object.entries(polynomials).sort()) {
-        polynomials[polName].subScalar(Fr.mul(alphaCoef, proof.evaluations[polName]));
-        polynomials[polName].divByXValue(challenges.z);
+        polynomials[polName].subScalar(proof.evaluations[polName]);
+         polynomials[polName].mulScalar(alphaCoef);
 
         polQ.add(polynomials[polName]);
+
         alphaCoef = Fr.mul(alphaCoef, challenges.alpha);
     }
+    polQ.divByXValue(challenges.z);
 
     proof.pi = await polQ.evaluateG1(pTauBuffer, curve, logger);
     if (logger) {

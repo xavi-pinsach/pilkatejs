@@ -369,7 +369,7 @@ export class Polynomial {
         }
     }
 
-    async expTau(PTau, curve, logger, name) {
+    async evaluateG1(PTau, curve, logger, name) {
         const n = this.coef.byteLength / curve.Fr.n8;
         const PTauN = PTau.slice(0, n * curve.G1.F.n8 * 2);
         const bm = await curve.Fr.batchFromMontgomery(this.coef);

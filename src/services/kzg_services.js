@@ -38,3 +38,11 @@ export async function kzgVerify(preprocessedFile, publicFile, proofFile, options
 
     return await kzg.kzgVerify(preprocessed, publicInputs, proof, logger);
 }
+
+export async function kzgTest(ptauFile, options) {
+    if (options.verbose) Logger.setLogLevel("DEBUG");
+
+    await kzg.kzgTest(ptauFile, logger);
+
+    return 0;
+}

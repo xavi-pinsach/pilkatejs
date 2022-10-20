@@ -31,7 +31,7 @@ export default async function kateSetup(pilFile, pilConfigFile, cnstPolsFile, pt
     logger.info("Starting kate setup");
 
     const {fd: fdPTau, sections: sectionsPTau} = await readBinFile(ptauFile, "ptau", 1, 1 << 22, 1 << 24);
-    if (!sectionsPTau[12]) {
+    if (!sectionsPTau[2] || !sectionsPTau[3]) {
         if (logger) logger.error("Powers of tau is not prepared.");
         return -1;
     }
@@ -62,9 +62,8 @@ export default async function kateSetup(pilFile, pilConfigFile, cnstPolsFile, pt
     const sizeG1 = G1.F.n8 * 2;
     const sizeG2 = G2.F.n8 * 2;
 
-    const pTau = new BigBuffer(domainSize * sizeG1);
-    const o = sectionsPTau[12][0].p + ((2 ** (pilPower)) - 1) * sizeG1;
-    await fdPTau.readToBuffer(pTau, 0, domainSize * sizeG1, o);
+    const pTauBuffer = new BigBuffer(domainSize * sizeG1);
+    await fdPTau.readToBuffer(pTauBuffer, 0, domainSize * sizeG1, sectionsPTau[2][0].p);
 
     let preprocessed = {
         protocol: "kate",
@@ -94,10 +93,9 @@ export default async function kateSetup(pilFile, pilConfigFile, cnstPolsFile, pt
         }
 
         let pol = await Polynomial.fromBuffer(polEvalBuff, Fr, logger);
-        pol = await pol.divZh();
 
         // Calculates the commitment
-        const polCommitment = await pol.expTau(pTau, curve, logger);
+        const polCommitment = await pol.evaluateG1(pTauBuffer, curve, logger);
 
         // Add the commitment to the preprocessed polynomials
         preprocessed.polynomials[cnstPol.name] = G1.toObject(polCommitment);

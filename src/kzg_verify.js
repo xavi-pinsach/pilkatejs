@@ -114,6 +114,7 @@ function computeChallenges(preprocessed, proof, curve, logger) {
     }
 
     challenges.z = transcript.getChallenge();
+
     if (logger) {
         logger.info("Computed challenge z: " + Fr.toString(challenges.z));
     }
@@ -151,7 +152,7 @@ function computeF(proof, preprocessed, challenges, curve) {
         alphaCoef = Fr.mul(alphaCoef, challenges.alpha);
     }
 
-    return res;
+    return G1.toAffine(res);
 }
 
 function computeE(proof, preprocessed, challenges, curve) {
@@ -177,7 +178,7 @@ async function isValidPairing(proof, preprocessed, challenges, F, E, curve) {
     const G2 = curve.G2;
 
     const A1 = proof.pi;
-    const A2 = G2.sub(preprocessed.S_2, G2.timesFr(G2.one, challenges.z));
+    const A2 = G2.sub(preprocessed.S_2, G2.toAffine(G2.timesFr(G2.one, challenges.z)));
 
     const B1 = G1.sub(F, E);
     const B2 = G2.one;

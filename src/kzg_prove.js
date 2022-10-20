@@ -70,8 +70,8 @@ export default async function kateProve(pilFile, pilConfigFile, cnstPolsFile, cm
     await cnstPols.loadFromFile(cnstPolsFile);
 
     // Load committed polynomials
-    // const cmmtPols = newCommitPolsArray(pil);
-    // await cmmtPols.loadFromFile(cmmtPolsFile);
+    const cmmtPols = newCommitPolsArray(pil);
+    await cmmtPols.loadFromFile(cmmtPolsFile);
 
     let challenges = {};
     challenges.b = {};
@@ -105,34 +105,32 @@ export default async function kateProve(pilFile, pilConfigFile, cnstPolsFile, cm
     }
 
     // Add committed polynomials commitments to the proof
-    // for (let i = 0; i < cmmtPols.$$nPols; i++) {
-    //     const cmmtPol = cmmtPols.$$defArray[i];
-    //     const cmmtPolBuffer = cmmtPols.$$array[i];
-    //
-    //     if (logger) {
-    //         logger.info(`Preparing committed ${cmmtPol.name} polynomial`);
-    //     }
-    //
-    //     // Convert from one filed to another (bigger), TODO check if a new constraint is needed
-    //     let polEvalBuff = new BigBuffer(cmmtPolBuffer.length * Fr.n8);
-    //     for (let i = 0; i < cmmtPolBuffer.length; i++) {
-    //         polEvalBuff.set(Fr.e(cmmtPolBuffer[i]), i * Fr.n8);
-    //     }
-    //
-    //     polynomials[cmmtPol.name] = await Polynomial.fromBuffer(polEvalBuff, Fr, logger);
-    //
-    //     // Blind polynomial with random blinding scalars b_{2i}, b_{2i+1} ∈ Zp
-    //     // challenges.b[cmmtPol.name] = [Fr.random(), Fr.random()];
-    //     // polynomials[cmmtPol.name].blindCoefficients(challenges.b[cmmtPol.name]); // What to do with the blind coefficients!!!!
-    //
-    //     // polynomials[cmmtPol.name] = await polynomials[cmmtPol.name].divZh();
-    //
-    //     // Calculates the commitment
-    //     const polCommitment = await polynomials[cmmtPol.name].expTau(pTau, curve, logger);
-    //
-    //     // Add the commitment to the proof
-    //     proof.addPolynomial(cmmtPol.name, polCommitment);
-    // }
+    for (let i = 0; i < cmmtPols.$$nPols; i++) {
+        const cmmtPol = cmmtPols.$$defArray[i];
+        const cmmtPolBuffer = cmmtPols.$$array[i];
+
+        if (logger) {
+            logger.info(`Preparing committed ${cmmtPol.name} polynomial`);
+        }
+
+        // Convert from one filed to another (bigger), TODO check if a new constraint is needed
+        let polEvalBuff = new BigBuffer(cmmtPolBuffer.length * Fr.n8);
+        for (let i = 0; i < cmmtPolBuffer.length; i++) {
+            polEvalBuff.set(Fr.e(cmmtPolBuffer[i]), i * Fr.n8);
+        }
+
+        polynomials[cmmtPol.name] = await Polynomial.fromBuffer(polEvalBuff, Fr, logger);
+
+        // TODO ???? Blind polynomial with random blinding scalars b_{2i}, b_{2i+1} ∈ Zp
+        // challenges.b[cmmtPol.name] = [Fr.random(), Fr.random()];
+        // polynomials[cmmtPol.name].blindCoefficients(challenges.b[cmmtPol.name]); // What to do with the blind coefficients!!!!
+
+        // Calculates the commitment
+        const polCommitment = await polynomials[cmmtPol.name].evaluateG1(pTauBuffer, curve, logger);
+
+        // Add the commitment to the proof
+        proof.addPolynomial(cmmtPol.name, polCommitment);
+    }
 
     // KATE 2. Samples an evaluation challenge z ∈ Z_p:
     const transcript = new Keccak256Transcript(curve);
@@ -172,7 +170,7 @@ export default async function kateProve(pilFile, pilConfigFile, cnstPolsFile, cm
     let alphaCoef = Fr.one;
     for (const [polName] of Object.entries(polynomials).sort()) {
         polynomials[polName].subScalar(proof.evaluations[polName]);
-         polynomials[polName].mulScalar(alphaCoef);
+        polynomials[polName].mulScalar(alphaCoef);
 
         polQ.add(polynomials[polName]);
 

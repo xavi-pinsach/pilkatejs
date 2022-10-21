@@ -20,3 +20,4 @@
 export {default as kzgSetup} from "./kzg_setup.js";
 export {default as kzgProve} from "./kzg_prove.js";
 export {default as kzgVerify} from "./kzg_verify.js";
+export {default as kzgBasic} from "./kzg_basic.js";

@@ -39,10 +39,10 @@ export async function kzgVerify(preprocessedFile, publicFile, proofFile, options
     return await kzg.kzgVerify(preprocessed, publicInputs, proof, logger);
 }
 
-export async function kzgTest(ptauFile, options) {
+export async function kzgBasic(ptauFile, options) {
     if (options.verbose) Logger.setLogLevel("DEBUG");
 
-    await kzg.kzgTest(ptauFile, logger);
+    await kzg.kateBasic(ptauFile, logger);
 
     return 0;
 }

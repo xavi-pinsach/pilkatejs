@@ -29,6 +29,7 @@ import {utils as ffjavascriptUtils} from "ffjavascript";
 
 const {stringifyBigInts} = ffjavascriptUtils;
 
+
 export default async function kateProve(pilFile, pilConfigFile, cnstPolsFile, cmmtPolsFile, ptauFile, logger) {
     logger.info("Starting kate prover");
 
@@ -79,6 +80,30 @@ export default async function kateProve(pilFile, pilConfigFile, cnstPolsFile, cm
     let proof = new Proof(curve, logger);
     let polynomials = {};
 
+    await round1(curve, pTauBuffer, cnstPols, cmmtPols, polynomials, proof, logger);
+    round5(curve, polynomials, challenges, proof, logger);
+    await round6(curve, pTauBuffer, polynomials, challenges, proof, logger);
+
+    logger.info("Kate prover finished successfully");
+
+    //TODO construct public Signals...
+    let publicSignals = {};
+
+    // Remove constant polynomials from the proof because they are in the preprocessed data already
+    for (let i = 0; i < cnstPols.$$nPols; i++) {
+        delete proof.polynomials[cnstPols.$$defArray[i].name];
+    }
+
+    // Finish curve & close file descriptors
+    await curve.terminate();
+    fdPTau.close();
+
+    return {publicInputs: stringifyBigInts(publicSignals), proof: stringifyBigInts(proof.toObjectProof())};
+}
+
+async function round1(curve, pTauBuffer, cnstPols, cmmtPols, polynomials, proof, logger) {
+    const Fr = curve.Fr;
+    
     // KATE 1. Compute the commitments
     // Rebuild preprocessed polynomials
     for (let i = 0; i < cnstPols.$$nPols; i++) {
@@ -131,25 +156,36 @@ export default async function kateProve(pilFile, pilConfigFile, cnstPolsFile, cm
         // Add the commitment to the proof
         proof.addPolynomial(cmmtPol.name, polCommitment);
     }
+}
 
-    // KATE 2. Samples an evaluation challenge z ∈ Z_p:
+// ROUND 5. Samples an evaluation challenge z ∈ Z_p:
+function round5(curve, polynomials, challenges, proof, logger) {
+    const Fr = curve.Fr;
+
     const transcript = new Keccak256Transcript(curve);
-
     for (const polName in polynomials) {
         transcript.appendPolCommitment(proof.polynomials[polName]);
     }
 
-    challenges.z = transcript.getChallenge();
+    challenges.xi = transcript.getChallenge();
     if (logger) {
-        logger.info("Challenge z computed: " + Fr.toString(challenges.z));
+        logger.info("Challenge xi computed: " + Fr.toString(challenges.xi));
     }
 
     // KATE 3. Computes pi(z),for i = 1,...,t.
-    transcript.reset();
     for (const polName in polynomials) {
-        const evaluation = polynomials[polName].evaluate(challenges.z);
+        const evaluation = polynomials[polName].evaluate(challenges.xi);
         proof.addEvaluation(polName, evaluation);
-        transcript.appendScalar(evaluation);
+    }
+}
+
+async function round6(curve, pTauBuffer, polynomials, challenges, proof, logger) {
+    const Fr = curve.Fr;
+
+    // KATE 2. Samples an evaluation challenge z ∈ Z_p:
+    const transcript = new Keccak256Transcript(curve);
+    for (const polName in polynomials) {
+        transcript.appendScalar(proof.evaluations[polName]);
     }
 
     // KATE 4. Samples an opening challenge α ∈ Zp.
@@ -176,26 +212,10 @@ export default async function kateProve(pilFile, pilConfigFile, cnstPolsFile, cm
 
         alphaCoef = Fr.mul(alphaCoef, challenges.alpha);
     }
-    polQ.divByXValue(challenges.z);
+    polQ.divByXValue(challenges.xi);
 
     proof.pi = await polQ.evaluateG1(pTauBuffer, curve, logger);
     if (logger) {
         logger.info("Computed proof: " + curve.G1.toString(proof.pi));
     }
-
-    logger.info("Kate prover finished successfully");
-
-    //TODO construct public Signals...
-    let publicSignals = {};
-
-    // Remove constant polynomials from the proof because they are in the preprocessed data already
-    for (let i = 0; i < cnstPols.$$nPols; i++) {
-        delete proof.polynomials[cnstPols.$$defArray[i].name];
-    }
-
-    // Finish curve & close file descriptors
-    await curve.terminate();
-    fdPTau.close();
-
-    return {publicInputs: stringifyBigInts(publicSignals), proof: stringifyBigInts(proof.toObjectProof())};
 }

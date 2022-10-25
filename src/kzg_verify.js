@@ -25,12 +25,12 @@ import * as curves from "./curves.js";
 const {unstringifyBigInts} = ffjavascriptUtils;
 
 
-export default async function kateVerify(_preprocessed, _publicInputs, _proof, logger) {
+export default async function kateVerify(_preprocessed, /*_publicInputs,*/ _proof, logger) {
     logger.info("Starting kate verifier");
 
     // 0. Setup
     _preprocessed = unstringifyBigInts(_preprocessed);
-    _publicInputs = unstringifyBigInts(_publicInputs);
+    //_publicInputs = unstringifyBigInts(_publicInputs);
     _proof = unstringifyBigInts(_proof);
 
     const curve = await curves.getCurveFromName(_preprocessed.curve);

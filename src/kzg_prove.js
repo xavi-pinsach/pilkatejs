@@ -80,30 +80,44 @@ export default async function kateProve(pilFile, pilConfigFile, cnstPolsFile, cm
     let proof = new Proof(curve, logger);
     let polynomials = {};
 
+    // ROUND 1. Commits to the committed polynomials
     await round1(curve, pTauBuffer, cnstPols, cmmtPols, polynomials, proof, logger);
+
+    // ROUND 2. Build h1 & h2 polynomials from the plookups
+//    round2(curve, polynomials, challenges, proof, logger);
+
+    // ROUND 3. Build the Z polynomial from each non-identity constraint
+//    round3(curve, polynomials, challenges, proof, logger);
+
+    // ROUND 4. Build the constraint polynomial C
+//    round4(curve, polynomials, challenges, proof, logger);
+
+    // ROUND 5. Computes opening evaluations for each polynomial in polynomials
     round5(curve, polynomials, challenges, proof, logger);
+
+    // ROUND 6. Compute the opening batched proof polynomials Wxi(X) and Wxiω(X)
     await round6(curve, pTauBuffer, polynomials, challenges, proof, logger);
 
-    logger.info("Kate prover finished successfully");
-
     //TODO construct public Signals...
-    let publicSignals = {};
+    //let publicSignals = {};
 
     // Remove constant polynomials from the proof because they are in the preprocessed data already
     for (let i = 0; i < cnstPols.$$nPols; i++) {
         delete proof.polynomials[cnstPols.$$defArray[i].name];
     }
 
+    logger.info("Kate prover finished successfully");
+
     // Finish curve & close file descriptors
     await curve.terminate();
     fdPTau.close();
 
-    return {publicInputs: stringifyBigInts(publicSignals), proof: stringifyBigInts(proof.toObjectProof())};
+    return {/*publicInputs: stringifyBigInts(publicSignals),*/ proof: stringifyBigInts(proof.toObjectProof())};
 }
 
 async function round1(curve, pTauBuffer, cnstPols, cmmtPols, polynomials, proof, logger) {
     const Fr = curve.Fr;
-    
+
     // KATE 1. Compute the commitments
     // Rebuild preprocessed polynomials
     for (let i = 0; i < cnstPols.$$nPols; i++) {
@@ -125,6 +139,7 @@ async function round1(curve, pTauBuffer, cnstPols, cmmtPols, polynomials, proof,
         // Calculates the commitment
         const polCommitment = await polynomials[cnstPol.name].evaluateG1(pTauBuffer, curve, logger);
 
+        //TODO remove constant polynomials from here, ergo from transcript?
         // Add the commitment to the proof
         proof.addPolynomial(cnstPol.name, polCommitment);
     }
@@ -138,7 +153,7 @@ async function round1(curve, pTauBuffer, cnstPols, cmmtPols, polynomials, proof,
             logger.info(`Preparing committed ${cmmtPol.name} polynomial`);
         }
 
-        // Convert from one filed to another (bigger), TODO check if a new constraint is needed
+        // Convert from one field to another (bigger), TODO check if a new constraint is needed
         let polEvalBuff = new BigBuffer(cmmtPolBuffer.length * Fr.n8);
         for (let i = 0; i < cmmtPolBuffer.length; i++) {
             polEvalBuff.set(Fr.e(cmmtPolBuffer[i]), i * Fr.n8);
@@ -158,7 +173,7 @@ async function round1(curve, pTauBuffer, cnstPols, cmmtPols, polynomials, proof,
     }
 }
 
-// ROUND 5. Samples an evaluation challenge z ∈ Z_p:
+// ROUND 5. Computes opening evaluations for each polynomial in polynomials
 function round5(curve, polynomials, challenges, proof, logger) {
     const Fr = curve.Fr;
 
@@ -167,32 +182,35 @@ function round5(curve, polynomials, challenges, proof, logger) {
         transcript.appendPolCommitment(proof.polynomials[polName]);
     }
 
+    // Samples an opening evaluation challenge xi ∈ F_p
     challenges.xi = transcript.getChallenge();
-    if (logger) {
-        logger.info("Challenge xi computed: " + Fr.toString(challenges.xi));
-    }
+    if (logger) logger.info("Challenge xi computed: " + Fr.toString(challenges.xi));
 
-    // KATE 3. Computes pi(z),for i = 1,...,t.
+    // Computes opening evaluations for each polynomial in polynomials
     for (const polName in polynomials) {
         const evaluation = polynomials[polName].evaluate(challenges.xi);
         proof.addEvaluation(polName, evaluation);
     }
 }
 
+// ROUND 6. Compute the opening batched proof polynomials Wxi(X) and Wxiω(X)
 async function round6(curve, pTauBuffer, polynomials, challenges, proof, logger) {
     const Fr = curve.Fr;
 
-    // KATE 2. Samples an evaluation challenge z ∈ Z_p:
     const transcript = new Keccak256Transcript(curve);
     for (const polName in polynomials) {
         transcript.appendScalar(proof.evaluations[polName]);
     }
 
-    // KATE 4. Samples an opening challenge α ∈ Zp.
-    challenges.alpha = transcript.getChallenge();
-    if (logger) {
-        logger.info("Challenge alpha computed: " + Fr.toString(challenges.alpha));
-    }
+    // Samples an opening challenge v ∈ Fp.
+    challenges.v = transcript.getChallenge();
+    if (logger) logger.info("Challenge v computed: " + Fr.toString(challenges.v));
+
+    // Samples an opening challenge vp ∈ Fp.
+    transcript.reset();
+    transcript.appendScalar(challenges.v);
+    challenges.vp = transcript.getChallenge();
+    if (logger) logger.info("Challenge vp computed: " + Fr.toString(challenges.vp));
 
     // KATE 5 Computes the proof π = [q(s)]1
     // Computes the polynomial q(x) := ∑ α^{i-1} (pi(x) − pi(z)) / (x - z)
@@ -201,20 +219,20 @@ async function round6(curve, pTauBuffer, polynomials, challenges, proof, logger)
         maxDegree = Math.max(maxDegree, polynomials[key].degree());
     });
 
-    let polQ = new Polynomial(new BigBuffer((maxDegree + 1) * Fr.n8), Fr, logger);
+    let polWxi = new Polynomial(new BigBuffer((maxDegree + 1) * Fr.n8), Fr, logger);
 
     let alphaCoef = Fr.one;
     for (const [polName] of Object.entries(polynomials).sort()) {
         polynomials[polName].subScalar(proof.evaluations[polName]);
         polynomials[polName].mulScalar(alphaCoef);
 
-        polQ.add(polynomials[polName]);
+        polWxi.add(polynomials[polName]);
 
-        alphaCoef = Fr.mul(alphaCoef, challenges.alpha);
+        alphaCoef = Fr.mul(alphaCoef, challenges.v);
     }
-    polQ.divByXValue(challenges.xi);
+    polWxi.divByXValue(challenges.xi);
 
-    proof.pi = await polQ.evaluateG1(pTauBuffer, curve, logger);
+    proof.pi = await polWxi.evaluateG1(pTauBuffer, curve, logger);
     if (logger) {
         logger.info("Computed proof: " + curve.G1.toString(proof.pi));
     }

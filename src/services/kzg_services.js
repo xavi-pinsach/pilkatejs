@@ -33,10 +33,10 @@ export async function kzgVerify(preprocessedFile, publicFile, proofFile, options
     if (options.verbose) Logger.setLogLevel("DEBUG");
 
     const preprocessed = JSON.parse(fs.readFileSync(preprocessedFile, "utf8"));
-    const publicInputs = JSON.parse(fs.readFileSync(publicFile, "utf8"));
+    //const publicInputs = JSON.parse(fs.readFileSync(publicFile, "utf8"));
     const proof = JSON.parse(fs.readFileSync(proofFile, "utf8"));
 
-    return await kzg.kzgVerify(preprocessed, publicInputs, proof, logger);
+    return await kzg.kzgVerify(preprocessed, /*publicInputs,*/ proof, logger);
 }
 
 export async function kzgBasic(ptauFile, options) {

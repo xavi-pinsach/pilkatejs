@@ -108,7 +108,7 @@ export default async function kateProve(pilFile, pilConfigFile, cnstPolsFile, cm
     round5(curve, pilPower, polynomials, primePols, challenges, proof, logger);
 
     // ROUND 6. Compute the opening batched proof polynomials Wxi(X) and Wxiω(X)
-    await round6(curve, pTauBuffer, polynomials, challenges, proof, logger);
+    await round6(curve, pTauBuffer, polynomials, primePols, challenges, proof, logger);
 
     //TODO construct public Signals...
     //let publicSignals = {};
@@ -117,6 +117,7 @@ export default async function kateProve(pilFile, pilConfigFile, cnstPolsFile, cm
     for (let i = 0; i < cnstPols.$$nPols; i++) {
         delete proof.polynomials[cnstPols.$$defArray[i].name];
     }
+    delete challenges.xiw;
 
     logger.info("Kate prover finished successfully");
 
@@ -195,17 +196,17 @@ function round5(curve, pilPower, polynomials, primePols, challenges, proof, logg
     }
 
 
-    const xiw = Fr.mul(challenges.xi, Fr.w[pilPower]);
+    challenges.xiw = Fr.mul(challenges.xi, Fr.w[pilPower]);
 
     // Computes opening evaluations for each polynomial in primePols
     primePols.forEach(primePol => {
-        const evaluation = polynomials[primePol.reference].evaluate(xiw);
+        const evaluation = polynomials[primePol.reference].evaluate(challenges.xiw);
         proof.addEvaluation(primePol.reference, evaluation, true);
     });
 }
 
 // ROUND 6. Compute the opening batched proof polynomials Wxi(X) and Wxiω(X)
-async function round6(curve, pTauBuffer, polynomials, challenges, proof, logger) {
+async function round6(curve, pTauBuffer, polynomials, primePols, challenges, proof, logger) {
     const Fr = curve.Fr;
 
     const transcript = new Keccak256Transcript(curve);
@@ -233,11 +234,9 @@ async function round6(curve, pTauBuffer, polynomials, challenges, proof, logger)
     let polWxi = new Polynomial(new BigBuffer((maxDegree + 1) * Fr.n8), Fr, logger);
 
     let alphaCoef = Fr.one;
-    for (const [polName] of Object.entries(polynomials).sort()) {
-        polynomials[polName].subScalar(proof.evaluations[polName]);
-        polynomials[polName].mulScalar(alphaCoef);
-
-        polWxi.add(polynomials[polName]);
+    for (const polName of Object.keys(polynomials).sort()) {
+        polWxi.add(polynomials[polName], alphaCoef);
+        polWxi.subScalar(Fr.mul(proof.evaluations[polName], alphaCoef));
 
         alphaCoef = Fr.mul(alphaCoef, challenges.v);
     }
@@ -246,6 +245,28 @@ async function round6(curve, pTauBuffer, polynomials, challenges, proof, logger)
     proof.Wxi = await polWxi.evaluateG1(pTauBuffer, curve, logger);
     if (logger) {
         logger.info("Computed proof: " + curve.G1.toString(proof.Wxi));
+    }
+
+    let maxDegreeW = 0;
+    primePols.forEach(primePol => {
+        maxDegreeW = Math.max(maxDegreeW, polynomials[primePol.reference].degree());
+    });
+
+    let polWxiw = new Polynomial(new BigBuffer((maxDegreeW + 1) * Fr.n8), Fr, logger);
+
+    alphaCoef = Fr.one;
+    let references = primePols.map(a => a.reference).sort();
+    for (const polName of references) {
+        polWxiw.add(polynomials[polName], alphaCoef);
+        polWxiw.subScalar(Fr.mul(proof.evaluationsW[polName], alphaCoef));
+
+        alphaCoef = Fr.mul(alphaCoef, challenges.vp);
+    }
+    polWxiw.divByXValue(challenges.xiw);
+
+    proof.Wxiw = await polWxiw.evaluateG1(pTauBuffer, curve, logger);
+    if (logger) {
+        logger.info("Computed proof: " + curve.G1.toString(proof.Wxiw));
     }
 }
 

@@ -17,15 +17,14 @@
     along with pilkatejs. If not, see <https://www.gnu.org/licenses/>.
 */
 
-import {BigBuffer, F1Field} from "ffjavascript";
-import {newConstantPolsArray, compile, newCommitPolsArray} from "pilcom";
+import {BigBuffer, F1Field, utils as ffjavascriptUtils} from "ffjavascript";
+import {compile, newCommitPolsArray, newConstantPolsArray} from "pilcom";
 import {Polynomial} from "./polynomial/polynomial.js";
 import {readBinFile} from "@iden3/binfileutils";
 import {readPTauHeader} from "./powersoftau_utils.js";
 import {log2} from "./misc.js";
 import {Proof} from "./proof.js";
 import {Keccak256Transcript} from "./keccak256Transcript.js";
-import {utils as ffjavascriptUtils} from "ffjavascript";
 
 const {stringifyBigInts} = ffjavascriptUtils;
 
@@ -119,27 +118,30 @@ async function round1(curve, pTauBuffer, cnstPols, cmmtPols, polynomials, proof,
     const Fr = curve.Fr;
 
     // KATE 1. Compute the commitments
+    async function computeCommitment(pol, polBuffer) {
+        if (logger) {
+            logger.info(`Preparing constant ${pol.name} polynomial`);
+        }
+
+        // Convert from one filed to another (bigger), TODO check if a new constraint is needed
+        let polEvalBuff = new BigBuffer(polBuffer.length * Fr.n8);
+        for (let i = 0; i < polBuffer.length; i++) {
+            polEvalBuff.set(Fr.e(polBuffer[i]), i * Fr.n8);
+        }
+
+        polynomials[pol.name] = await Polynomial.fromBuffer(polEvalBuff, Fr, logger);
+
+        // Calculates the commitment
+        return await polynomials[pol.name].evaluateG1(pTauBuffer, curve, logger);
+    }
+
     // Rebuild preprocessed polynomials
     for (let i = 0; i < cnstPols.$$nPols; i++) {
         const cnstPol = cnstPols.$$defArray[i];
         const cnstPolBuffer = cnstPols.$$array[i];
 
-        if (logger) {
-            logger.info(`Preparing constant ${cnstPol.name} polynomial`);
-        }
+        const polCommitment = await computeCommitment(cnstPol, cnstPolBuffer);
 
-        // Convert from one filed to another (bigger), TODO check if a new constraint is needed
-        let polEvalBuff = new BigBuffer(cnstPolBuffer.length * Fr.n8);
-        for (let i = 0; i < cnstPolBuffer.length; i++) {
-            polEvalBuff.set(Fr.e(cnstPolBuffer[i]), i * Fr.n8);
-        }
-
-        polynomials[cnstPol.name] = await Polynomial.fromBuffer(polEvalBuff, Fr, logger);
-
-        // Calculates the commitment
-        const polCommitment = await polynomials[cnstPol.name].evaluateG1(pTauBuffer, curve, logger);
-
-        //TODO remove constant polynomials from here, ergo from transcript?
         // Add the commitment to the proof
         proof.addPolynomial(cnstPol.name, polCommitment);
     }
@@ -149,24 +151,8 @@ async function round1(curve, pTauBuffer, cnstPols, cmmtPols, polynomials, proof,
         const cmmtPol = cmmtPols.$$defArray[i];
         const cmmtPolBuffer = cmmtPols.$$array[i];
 
-        if (logger) {
-            logger.info(`Preparing committed ${cmmtPol.name} polynomial`);
-        }
-
-        // Convert from one field to another (bigger), TODO check if a new constraint is needed
-        let polEvalBuff = new BigBuffer(cmmtPolBuffer.length * Fr.n8);
-        for (let i = 0; i < cmmtPolBuffer.length; i++) {
-            polEvalBuff.set(Fr.e(cmmtPolBuffer[i]), i * Fr.n8);
-        }
-
-        polynomials[cmmtPol.name] = await Polynomial.fromBuffer(polEvalBuff, Fr, logger);
-
-        // TODO ???? Blind polynomial with random blinding scalars b_{2i}, b_{2i+1} ∈ Zp
-        // challenges.b[cmmtPol.name] = [Fr.random(), Fr.random()];
-        // polynomials[cmmtPol.name].blindCoefficients(challenges.b[cmmtPol.name]); // What to do with the blind coefficients!!!!
-
-        // Calculates the commitment
-        const polCommitment = await polynomials[cmmtPol.name].evaluateG1(pTauBuffer, curve, logger);
+        //TODO blind polynomial??????
+        const polCommitment = await computeCommitment(cmmtPol, cmmtPolBuffer);
 
         // Add the commitment to the proof
         proof.addPolynomial(cmmtPol.name, polCommitment);

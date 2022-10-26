@@ -42,8 +42,12 @@ export class Proof {
             res.evaluationsW[key] = this.curve.Fr.toObject(this.evaluationsW[key]);
         });
 
-        if (this.pi) {
-            res.pi = this.curve.G1.toObject(this.pi);
+        if (this.Wxi) {
+            res.Wxi = this.curve.G1.toObject(this.Wxi);
+        }
+
+        if (this.Wxiw) {
+            res.Wxiw = this.curve.G1.toObject(this.Wxiw);
         }
 
         return res;
@@ -64,8 +68,12 @@ export class Proof {
             this.evaluationsW[key] = this.curve.Fr.fromObject(objectProof.evaluationsW[key]);
         });
 
-        if (objectProof.pi) {
-            this.pi = this.curve.G1.fromObject(objectProof.pi);
+        if (objectProof.Wxi) {
+            this.Wxi = this.curve.G1.fromObject(objectProof.Wxi);
+        }
+
+        if (objectProof.Wxiw) {
+            this.Wxiw = this.curve.G1.fromObject(objectProof.Wxiw);
         }
     }
 }

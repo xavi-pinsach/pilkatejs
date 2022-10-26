@@ -243,9 +243,9 @@ async function round6(curve, pTauBuffer, polynomials, challenges, proof, logger)
     }
     polWxi.divByXValue(challenges.xi);
 
-    proof.pi = await polWxi.evaluateG1(pTauBuffer, curve, logger);
+    proof.Wxi = await polWxi.evaluateG1(pTauBuffer, curve, logger);
     if (logger) {
-        logger.info("Computed proof: " + curve.G1.toString(proof.pi));
+        logger.info("Computed proof: " + curve.G1.toString(proof.Wxi));
     }
 }
 

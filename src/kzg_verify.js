@@ -53,7 +53,7 @@ export default async function kateVerify(_preprocessed, /*_publicInputs,*/ _proo
     // 3. Compute the challenges z, alpha as in prover description from the common preprocessed inputs and elements of π
     const challenges = computeChallenges(preprocessed, proof, curve, logger);
     if (logger) {
-        logger.info("Computed proof: " + curve.G1.toString(proof.pi));
+        logger.info("Computed proof: " + curve.G1.toString(proof.Wxi));
     }
 
     // 4. Check identities TODO
@@ -177,7 +177,7 @@ async function isValidPairing(proof, preprocessed, challenges, F, E, curve) {
     const G1 = curve.G1;
     const G2 = curve.G2;
 
-    const A1 = proof.pi;
+    const A1 = proof.Wxi;
     const A2 = G2.sub(preprocessed.S_2, G2.toAffine(G2.timesFr(G2.one, challenges.z)));
 
     const B1 = G1.sub(F, E);

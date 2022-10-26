@@ -118,22 +118,6 @@ async function round1(curve, pTauBuffer, cnstPols, cmmtPols, polynomials, proof,
     const Fr = curve.Fr;
 
     // KATE 1. Compute the commitments
-    async function computeCommitment(pol, polBuffer) {
-        if (logger) {
-            logger.info(`Preparing constant ${pol.name} polynomial`);
-        }
-
-        // Convert from one filed to another (bigger), TODO check if a new constraint is needed
-        let polEvalBuff = new BigBuffer(polBuffer.length * Fr.n8);
-        for (let i = 0; i < polBuffer.length; i++) {
-            polEvalBuff.set(Fr.e(polBuffer[i]), i * Fr.n8);
-        }
-
-        polynomials[pol.name] = await Polynomial.fromBuffer(polEvalBuff, Fr, logger);
-
-        // Calculates the commitment
-        return await polynomials[pol.name].evaluateG1(pTauBuffer, curve, logger);
-    }
 
     // Rebuild preprocessed polynomials
     for (let i = 0; i < cnstPols.$$nPols; i++) {
@@ -156,6 +140,23 @@ async function round1(curve, pTauBuffer, cnstPols, cmmtPols, polynomials, proof,
 
         // Add the commitment to the proof
         proof.addPolynomial(cmmtPol.name, polCommitment);
+    }
+
+    async function computeCommitment(pol, polBuffer) {
+        if (logger) {
+            logger.info(`Preparing constant ${pol.name} polynomial`);
+        }
+
+        // Convert from one filed to another (bigger), TODO check if a new constraint is needed
+        let polEvalBuff = new BigBuffer(polBuffer.length * Fr.n8);
+        for (let i = 0; i < polBuffer.length; i++) {
+            polEvalBuff.set(Fr.e(polBuffer[i]), i * Fr.n8);
+        }
+
+        polynomials[pol.name] = await Polynomial.fromBuffer(polEvalBuff, Fr, logger);
+
+        // Calculates the commitment
+        return await polynomials[pol.name].evaluateG1(pTauBuffer, curve, logger);
     }
 }
 

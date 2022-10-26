@@ -53,7 +53,7 @@ export default async function kateVerify(_preprocessed, /*_publicInputs,*/ _proo
     // 3. Compute the challenges z, alpha as in prover description from the common preprocessed inputs and elements of π
     const challenges = computeChallenges(preprocessed, proof, curve, logger);
     if (logger) {
-        logger.info("Computed proof: " + curve.G1.toString(proof.Wxi));
+        logger.info("Computed proof: " + curve.G1.toString(proof.pi.Wxi));
     }
 
     // 4. Check identities TODO
@@ -105,30 +105,43 @@ function computeChallenges(preprocessed, proof, curve, logger) {
     const transcript = new Keccak256Transcript(curve);
 
     // Compute z challenge from polynomials
-    for (const [polName] of Object.entries(preprocessed.polynomials)) {
+    for (const polName of Object.keys(preprocessed.polynomials)) {
         transcript.appendPolCommitment(preprocessed.polynomials[polName]);
     }
 
-    for (const [polName] of Object.entries(proof.polynomials)) {
+    for (const polName of Object.keys(proof.polynomials)) {
         transcript.appendPolCommitment(proof.polynomials[polName]);
     }
 
-    challenges.z = transcript.getChallenge();
+    challenges.xi = transcript.getChallenge();
 
     if (logger) {
-        logger.info("Computed challenge z: " + Fr.toString(challenges.z));
+        logger.info("Computed challenge z: " + Fr.toString(challenges.xi));
     }
 
     // Compute alpha challenge from evaluations
     transcript.reset();
-    for (const [evalPol] of Object.entries(proof.evaluations)) {
+    for (const evalPol of Object.keys(proof.evaluations)) {
         transcript.appendScalar(proof.evaluations[evalPol]);
     }
 
-    challenges.alpha = transcript.getChallenge();
+    challenges.v = transcript.getChallenge();
     if (logger) {
-        logger.info("Computed challenge alpha: " + Fr.toString(challenges.alpha));
+        logger.info("Computed challenge alpha: " + Fr.toString(challenges.v));
     }
+
+    // Samples an opening challenge vp ∈ Fp.
+    transcript.reset();
+    transcript.appendScalar(challenges.v);
+    challenges.vp = transcript.getChallenge();
+    if (logger) logger.info("Challenge vp computed: " + Fr.toString(challenges.vp));
+
+    // Compute multipoint evaluation challenge u ∈ F
+    transcript.reset();
+    transcript.appendPolCommitment(proof.pi.Wxi);
+    transcript.appendPolCommitment(proof.pi.Wxiw);
+
+    challenges.u = transcript.getChallenge();
 
     return challenges;
 }
@@ -140,17 +153,26 @@ function computeF(proof, preprocessed, challenges, curve) {
     let res = G1.zero;
 
     let alphaCoef = Fr.one;
-    for (const [polName] of Object.entries(proof.evaluations).sort()) {
+    for (const polName of Object.keys(proof.evaluations).sort()) {
         if (polName in proof.polynomials) {
             res = G1.add(res, G1.timesFr(proof.polynomials[polName], alphaCoef));
         } else if (polName in preprocessed.polynomials) {
             res = G1.add(res, G1.timesFr(preprocessed.polynomials[polName], alphaCoef));
-        } else {
-            throw new Error(`Polynomial ${polName} doesn't exist`);
-        }
+        } else throw new Error(`Polynomial ${polName} doesn't exist`);
 
-        alphaCoef = Fr.mul(alphaCoef, challenges.alpha);
+        alphaCoef = Fr.mul(alphaCoef, challenges.v);
     }
+
+    // alphaCoef = Fr.one;
+    // for (const polName of Object.keys(proof.evaluationsW).sort()) {
+    //     if (polName in proof.polynomials) {
+    //         res = G1.add(res, G1.timesFr(proof.polynomials[polName], alphaCoef));
+    //     } else if (polName in preprocessed.polynomials) {
+    //         res = G1.add(res, G1.timesFr(preprocessed.polynomials[polName], alphaCoef));
+    //     } else throw new Error(`Polynomial ${polName} doesn't exist`);
+    //
+    //     alphaCoef = Fr.mul(alphaCoef, challenges.vp);
+    // }
 
     return G1.toAffine(res);
 }
@@ -162,23 +184,30 @@ function computeE(proof, preprocessed, challenges, curve) {
     let res = Fr.zero;
 
     let alphaCoef = Fr.one;
-    for (const [polName] of Object.entries(proof.evaluations).sort()) {
+    for (const polName of Object.keys(proof.evaluations).sort()) {
         res = Fr.add(res, Fr.mul(proof.evaluations[polName], alphaCoef));
 
-        alphaCoef = Fr.mul(alphaCoef, challenges.alpha);
+        alphaCoef = Fr.mul(alphaCoef, challenges.v);
     }
 
-    res = G1.timesFr(G1.one, res);
+    // alphaCoef = Fr.one;
+    // for (const polName of Object.keys(proof.evaluationsW).sort()) {
+    //     res = Fr.add(res, Fr.mul(proof.evaluationsW[polName], alphaCoef));
+    //
+    //     alphaCoef = Fr.mul(alphaCoef, challenges.vp);
+    // }
 
+    res = G1.timesFr(G1.one, res);
     return res;
 }
 
 async function isValidPairing(proof, preprocessed, challenges, F, E, curve) {
+    const Fr = curve.Fr;
     const G1 = curve.G1;
     const G2 = curve.G2;
 
-    const A1 = proof.Wxi;
-    const A2 = G2.sub(preprocessed.S_2, G2.toAffine(G2.timesFr(G2.one, challenges.z)));
+    const A1 = proof.pi.Wxi;
+    const A2 = G2.sub(preprocessed.S_2, G2.toAffine(G2.timesFr(G2.one, challenges.xi)));
 
     const B1 = G1.sub(F, E);
     const B2 = G2.one;
@@ -195,7 +224,7 @@ function fromObjectVk(preprocessed, curve) {
         });
     }
 
-    if(preprocessed.S_2) {
+    if (preprocessed.S_2) {
         preprocessed.S_2 = curve.G2.fromObject(preprocessed.S_2);
     }
 

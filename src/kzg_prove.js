@@ -76,20 +76,21 @@ export default async function kateProve(pilFile, pilConfigFile, cnstPolsFile, cm
     // Get all polynomials p'(x) referenced in any expression
     const primePols = getPrimePolynomials(pil.expressions);
 
-    function findPolynomial(type, id) {
+    function findPolynomialByTypeId(type, id) {
         for (const polName in pil.references) {
             if (pil.references[polName].type === type && pil.references[polName].id === id) return polName;
         }
     }
 
     for (let i = 0; i < primePols.length; i++) {
-        primePols[i].reference = findPolynomial(primePols[i].op === "const" ? "constP" : "cmP", primePols[i].id);
+        primePols[i].reference = findPolynomialByTypeId(primePols[i].op + "P", primePols[i].id);
     }
 
     let challenges = {};
     challenges.b = {};
 
     let proof = new Proof(curve, logger);
+
     let polynomials = {};
 
     // ROUND 1. Commits to the committed polynomials

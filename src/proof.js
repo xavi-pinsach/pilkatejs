@@ -10,6 +10,7 @@ export class Proof {
         this.polynomials = {};
         this.evaluations = {};
         this.evaluationsW = {};
+        this.pi = {};
     }
 
     addPolynomial(key, polynomial) {
@@ -28,7 +29,7 @@ export class Proof {
     }
 
     toObjectProof() {
-        let res = {polynomials: {}, evaluations: {}, evaluationsW: {}};
+        let res = {polynomials: {}, evaluations: {}, evaluationsW: {}, pi: {}};
 
         Object.keys(this.polynomials).forEach(key => {
             res.polynomials[key] = this.curve.G1.toObject(this.polynomials[key]);
@@ -43,11 +44,11 @@ export class Proof {
         });
 
         if (this.Wxi) {
-            res.Wxi = this.curve.G1.toObject(this.Wxi);
+            res.pi.Wxi = this.curve.G1.toObject(this.Wxi);
         }
 
         if (this.Wxiw) {
-            res.Wxiw = this.curve.G1.toObject(this.Wxiw);
+            res.pi.Wxiw = this.curve.G1.toObject(this.Wxiw);
         }
 
         return res;
@@ -68,12 +69,12 @@ export class Proof {
             this.evaluationsW[key] = this.curve.Fr.fromObject(objectProof.evaluationsW[key]);
         });
 
-        if (objectProof.Wxi) {
-            this.Wxi = this.curve.G1.fromObject(objectProof.Wxi);
+        if (objectProof.pi.Wxi) {
+            this.pi.Wxi = this.curve.G1.fromObject(objectProof.pi.Wxi);
         }
 
-        if (objectProof.Wxiw) {
-            this.Wxiw = this.curve.G1.fromObject(objectProof.Wxiw);
+        if (objectProof.pi.Wxiw) {
+            this.pi.Wxiw = this.curve.G1.fromObject(objectProof.pi.Wxiw);
         }
     }
 }

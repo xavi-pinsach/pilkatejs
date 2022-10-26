@@ -1,4 +1,3 @@
-
 export class Proof {
     constructor(curve, logger) {
         this.curve = curve;
@@ -10,6 +9,7 @@ export class Proof {
     resetProof() {
         this.polynomials = {};
         this.evaluations = {};
+        this.evaluationsNext = {};
     }
 
     addPolynomial(key, polynomial) {
@@ -19,11 +19,12 @@ export class Proof {
         this.polynomials[key] = polynomial;
     }
 
-    addEvaluation(key, evaluation) {
-        if (key in this.evaluations) {
-            this.logger.warning(`proof: evaluations.${key} already exist in proof`);
+    addEvaluation(key, evaluation, isNext = false) {
+        const evaluationsKey = isNext ? "evaluationsNext" : "evaluations";
+        if (key in this[evaluationsKey]) {
+            this.logger.warning(`proof: ${evaluationsKey}.${key} already exist in proof`);
         }
-        this.evaluations[key] = evaluation;
+        this[evaluationsKey][key] = evaluation;
     }
 
     toObjectProof() {
@@ -37,7 +38,7 @@ export class Proof {
             res.evaluations[key] = this.curve.Fr.toObject(this.evaluations[key]);
         });
 
-        if(this.pi) {
+        if (this.pi) {
             res.pi = this.curve.G1.toObject(this.pi);
         }
 
@@ -55,7 +56,7 @@ export class Proof {
             this.evaluations[key] = this.curve.Fr.fromObject(objectProof.evaluations[key]);
         });
 
-        if(objectProof.pi) {
+        if (objectProof.pi) {
             this.pi = this.curve.G1.fromObject(objectProof.pi);
         }
     }

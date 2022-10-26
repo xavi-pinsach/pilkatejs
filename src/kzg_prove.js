@@ -73,6 +73,19 @@ export default async function kateProve(pilFile, pilConfigFile, cnstPolsFile, cm
     const cmmtPols = newCommitPolsArray(pil);
     await cmmtPols.loadFromFile(cmmtPolsFile);
 
+    // Get all polynomials p'(x) referenced in any expression
+    const primePols = getPrimePolynomials(pil.expressions);
+
+    function findPolynomial(type, id) {
+        for (const polName in pil.references) {
+            if (pil.references[polName].type === type && pil.references[polName].id === id) return polName;
+        }
+    }
+
+    for (let i = 0; i < primePols.length; i++) {
+        primePols[i].reference = findPolynomial(primePols[i].op === "const" ? "constP" : "cmP", primePols[i].id);
+    }
+
     let challenges = {};
     challenges.b = {};
 
@@ -80,7 +93,7 @@ export default async function kateProve(pilFile, pilConfigFile, cnstPolsFile, cm
     let polynomials = {};
 
     // ROUND 1. Commits to the committed polynomials
-    await round1(curve, pTauBuffer, cnstPols, cmmtPols, polynomials, proof, logger);
+    await round1(curve, pTauBuffer, cnstPols, cmmtPols, polynomials, pil, proof, logger);
 
     // ROUND 2. Build h1 & h2 polynomials from the plookups
 //    round2(curve, polynomials, challenges, proof, logger);
@@ -92,7 +105,7 @@ export default async function kateProve(pilFile, pilConfigFile, cnstPolsFile, cm
 //    round4(curve, polynomials, challenges, proof, logger);
 
     // ROUND 5. Computes opening evaluations for each polynomial in polynomials
-    round5(curve, polynomials, challenges, proof, logger);
+    round5(curve, pilPower, polynomials, primePols, challenges, proof, logger);
 
     // ROUND 6. Compute the opening batched proof polynomials Wxi(X) and Wxiω(X)
     await round6(curve, pTauBuffer, polynomials, challenges, proof, logger);
@@ -114,7 +127,7 @@ export default async function kateProve(pilFile, pilConfigFile, cnstPolsFile, cm
     return {/*publicInputs: stringifyBigInts(publicSignals),*/ proof: stringifyBigInts(proof.toObjectProof())};
 }
 
-async function round1(curve, pTauBuffer, cnstPols, cmmtPols, polynomials, proof, logger) {
+async function round1(curve, pTauBuffer, cnstPols, cmmtPols, polynomials, pil, proof, logger) {
     const Fr = curve.Fr;
 
     // KATE 1. Compute the commitments
@@ -142,6 +155,8 @@ async function round1(curve, pTauBuffer, cnstPols, cmmtPols, polynomials, proof,
         proof.addPolynomial(cmmtPol.name, polCommitment);
     }
 
+    return 0;
+
     async function computeCommitment(pol, polBuffer) {
         if (logger) {
             logger.info(`Preparing constant ${pol.name} polynomial`);
@@ -161,7 +176,7 @@ async function round1(curve, pTauBuffer, cnstPols, cmmtPols, polynomials, proof,
 }
 
 // ROUND 5. Computes opening evaluations for each polynomial in polynomials
-function round5(curve, polynomials, challenges, proof, logger) {
+function round5(curve, pilPower, polynomials, primePols, challenges, proof, logger) {
     const Fr = curve.Fr;
 
     const transcript = new Keccak256Transcript(curve);
@@ -178,6 +193,15 @@ function round5(curve, polynomials, challenges, proof, logger) {
         const evaluation = polynomials[polName].evaluate(challenges.xi);
         proof.addEvaluation(polName, evaluation);
     }
+
+
+    const xiw = Fr.mul(challenges.xi, Fr.w[pilPower]);
+
+    // Computes opening evaluations for each polynomial in primePols
+    primePols.forEach(primePol => {
+        const evaluation = polynomials[primePol.reference].evaluate(xiw);
+        proof.addEvaluation(primePol.reference + "w", evaluation, true);
+    });
 }
 
 // ROUND 6. Compute the opening batched proof polynomials Wxi(X) and Wxiω(X)
@@ -222,5 +246,22 @@ async function round6(curve, pTauBuffer, polynomials, challenges, proof, logger)
     proof.pi = await polWxi.evaluateG1(pTauBuffer, curve, logger);
     if (logger) {
         logger.info("Computed proof: " + curve.G1.toString(proof.pi));
+    }
+}
+
+function getPrimePolynomials(exp) {
+    if (Array.isArray(exp)) {
+        let primePolynomials = [];
+        for (let i = 0; i < exp.length; i++) {
+            primePolynomials = primePolynomials.concat(getPrimePolynomials(exp[i]));
+        }
+        return primePolynomials;
+    } else if (exp.hasOwnProperty("values")) {
+        return getPrimePolynomials(exp.values);
+    } else {
+        if (exp.next && ("const" === exp.op || "cm" === exp.op)) {
+            return [exp];
+        }
+        return [];
     }
 }

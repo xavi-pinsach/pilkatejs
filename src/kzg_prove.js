@@ -200,7 +200,7 @@ function round5(curve, pilPower, polynomials, primePols, challenges, proof, logg
     // Computes opening evaluations for each polynomial in primePols
     primePols.forEach(primePol => {
         const evaluation = polynomials[primePol.reference].evaluate(xiw);
-        proof.addEvaluation(primePol.reference + "w", evaluation, true);
+        proof.addEvaluation(primePol.reference, evaluation, true);
     });
 }
 
